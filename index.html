@@ -23,6 +23,22 @@
       --danger-text: #93000a;
     }
 
+    body.dark {
+      --bg: #11161b;
+      --card: #1a2128;
+      --text: #e8edf2;
+      --muted: #aeb8c2;
+      --border: #2b3641;
+      --primary: #70b6ff;
+      --primary-soft: #163652;
+      --secondary: #8eff76;
+      --secondary-soft: #245b1f;
+      --warning-soft: #5f4c19;
+      --warning-text: #ffe9ab;
+      --danger-soft: #5f2323;
+      --danger-text: #ffc9c9;
+    }
+
     * {
       box-sizing: border-box;
       font-family: "Lexend", "Segoe UI", sans-serif;
@@ -62,7 +78,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: #fff;
+      background: var(--card);
       border-top: 1px solid var(--border);
       display: flex;
       justify-content: center;
@@ -100,10 +116,63 @@
       padding: 16px;
       margin-bottom: 12px;
       box-shadow: 0 6px 18px rgba(0, 93, 167, 0.08);
+      border-left-width: 6px;
+      border-left-color: var(--level-heat, var(--primary));
     }
 
     .clickable {
       cursor: pointer;
+    }
+
+    .level-index {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .level-card .row-header h3 {
+      margin: 4px 0 0;
+      line-height: 1.25;
+    }
+
+    .level-description {
+      margin: 2px 0 10px;
+      font-size: 14px;
+      line-height: 1.45;
+      font-weight: 400;
+    }
+
+    .level-title {
+      margin: 4px 0 0;
+      font-size: 36px;
+    }
+
+    .level-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .level-buttons.single-only {
+      grid-template-columns: 1fr;
+    }
+
+    .level-start-btn {
+      border-radius: 12px;
+      border: 2px solid var(--primary);
+      padding: 10px 12px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .level-start-btn.mixed {
+      background: #fff;
+      color: var(--primary);
     }
 
     .row {
@@ -160,7 +229,10 @@
 
     .progress > div {
       height: 100%;
-      background: linear-gradient(90deg, var(--primary), var(--secondary-soft));
+    }
+
+    .level-progress-fill {
+      background: var(--level-heat, var(--primary));
     }
 
     .section-title {
@@ -176,10 +248,30 @@
 
     .practice-card {
       margin-top: 12px;
+      cursor: pointer;
+      user-select: none;
+      perspective: 1200px;
+      min-height: 260px;
+    }
+
+    .practice-card-inner {
+      position: relative;
+      width: 100%;
+      min-height: 260px;
+      transform-style: preserve-3d;
+      transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    .practice-card.flipped .practice-card-inner {
+      transform: rotateY(180deg);
+    }
+
+    .practice-face {
+      position: absolute;
+      inset: 0;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 28px;
-      min-height: 260px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -187,8 +279,12 @@
       text-align: center;
       padding: 24px;
       box-shadow: 0 8px 24px rgba(0, 93, 167, 0.1);
-      cursor: pointer;
-      user-select: none;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+
+    .practice-face.back {
+      transform: rotateY(180deg);
     }
 
     .lang {
@@ -258,7 +354,7 @@
 
     .close-btn {
       border: 1px solid var(--border);
-      background: #fff;
+      background: var(--card);
       color: var(--muted);
       width: 36px;
       height: 36px;
@@ -357,6 +453,34 @@
       width: 100%;
     }
 
+    .unknown-list {
+      margin: 12px 0 0;
+      padding-left: 18px;
+      color: var(--text);
+    }
+
+    .unknown-list li {
+      margin: 8px 0;
+      line-height: 1.35;
+      list-style: disc;
+    }
+
+    .unknown-hu {
+      font-weight: 700;
+    }
+
+    .unknown-en {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .unknown-meta {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
     @media (max-width: 520px) {
       .row-header {
         flex-direction: column;
@@ -383,10 +507,18 @@
         <button id="exit-practice" class="close-btn" aria-label="Kilépés">×</button>
       </div>
       <p class="muted" id="practice-progress"></p>
-      <div class="timer">Hátralévő idő: <span id="time-left">10</span>mp</div>
+      <div id="practice-timer" class="timer">Hátralévő idő: <span id="time-left">10</span>mp</div>
       <div id="practice-card" class="practice-card" title="Kattintással fordítható">
-        <div class="lang" id="card-lang">MAGYAR</div>
-        <p class="sentence" id="card-text"></p>
+        <div class="practice-card-inner">
+          <div class="practice-face front">
+            <div class="lang">MAGYAR</div>
+            <p class="sentence" id="card-text-hu"></p>
+          </div>
+          <div class="practice-face back">
+            <div class="lang">ANGOL</div>
+            <p class="sentence" id="card-text-en"></p>
+          </div>
+        </div>
       </div>
       <button id="reveal-btn" class="reveal-btn">Fordítás felfedése</button>
       <div id="rating" class="rate hidden">
@@ -396,6 +528,10 @@
       <div id="round-result" class="settings-card hidden">
         <h3 style="margin-top:0;">Kör vége</h3>
         <p id="round-result-text" class="muted"></p>
+        <div id="round-unknown-wrap" class="hidden">
+          <p class="muted" style="margin:12px 0 6px;">Nem tudott mondatok</p>
+          <ul id="round-unknown-list" class="unknown-list"></ul>
+        </div>
         <button id="start-next-round" class="reveal-btn" style="margin-top:8px;">Új kör indítása</button>
         <button id="exit-after-round" class="rate-btn unknown">Kilépés a szintekhez</button>
       </div>
@@ -424,6 +560,12 @@
           <strong id="sentences-per-round-value">5</strong>
         </div>
         <input id="sentences-per-round" type="range" min="1" max="30" value="5" />
+      </div>
+      <div class="settings-card">
+        <div class="setting-row">
+          <label for="dark-mode-toggle">Sötét mód</label>
+          <input id="dark-mode-toggle" type="checkbox" />
+        </div>
       </div>
       <div class="settings-card">
         <div class="setting-row">
