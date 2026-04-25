@@ -4,18 +4,46 @@ const STORAGE_KEY = "linguist-state-v1";
 const DEFAULT_SETTINGS = {
   sentencesPerRound: 5,
   autoRevealSeconds: 10,
+  darkMode: false,
 };
 const MAX_SENTENCES_PER_ROUND = 30;
+const PRACTICE_TYPES = {
+  single: "single",
+  mixed: "mixed",
+};
+const PRACTICE_TYPE_LABELS = {
+  single: "Csak ez a szint",
+  mixed: "Vegyes",
+};
+
+function createDefaultTypeMetrics() {
+  return {
+    attempts: 0,
+    recentScores: [],
+    lastAttemptAt: null,
+    completedRounds: 0,
+  };
+}
 
 function createDefaultLevelMetrics() {
   return Object.fromEntries(
     levels.map((level) => [
       level.id,
       {
-        attempts: 0,
-        recentScores: [],
-        lastAttemptAt: null,
-        completedRounds: 0,
+        [PRACTICE_TYPES.single]: createDefaultTypeMetrics(),
+        [PRACTICE_TYPES.mixed]: createDefaultTypeMetrics(),
+      },
+    ])
+  );
+}
+
+function createDefaultBestScores() {
+  return Object.fromEntries(
+    levels.map((level) => [
+      level.id,
+      {
+        [PRACTICE_TYPES.single]: 0,
+        [PRACTICE_TYPES.mixed]: 0,
       },
     ])
   );
@@ -24,6 +52,7 @@ function createDefaultLevelMetrics() {
 const state = {
   currentScreen: "levels",
   selectedLevelId: levels[0]?.id ?? null,
+  currentPracticeType: PRACTICE_TYPES.single,
   practiceIndex: 0,
   isTranslatedVisible: false,
   isShowingEnglish: false,
@@ -33,7 +62,8 @@ const state = {
   roundAnswered: 0,
   roundKnown: 0,
   roundSentences: [],
-  levelBestScores: Object.fromEntries(levels.map((level) => [level.id, 0])),
+  roundUnknowns: [],
+  levelBestScores: createDefaultBestScores(),
   levelMetrics: createDefaultLevelMetrics(),
   settings: { ...DEFAULT_SETTINGS },
 };
@@ -45,10 +75,11 @@ const settingsScreen = document.getElementById("settings-screen");
 const levelsList = document.getElementById("levels-list");
 
 const practiceProgress = document.getElementById("practice-progress");
+const practiceTimer = document.getElementById("practice-timer");
 const timeLeftEl = document.getElementById("time-left");
 const card = document.getElementById("practice-card");
-const cardLang = document.getElementById("card-lang");
-const cardText = document.getElementById("card-text");
+const cardTextHu = document.getElementById("card-text-hu");
+const cardTextEn = document.getElementById("card-text-en");
 const revealBtn = document.getElementById("reveal-btn");
 const rating = document.getElementById("rating");
 
@@ -60,6 +91,8 @@ const knownBtn = document.getElementById("known-btn");
 const unknownBtn = document.getElementById("unknown-btn");
 const roundResult = document.getElementById("round-result");
 const roundResultText = document.getElementById("round-result-text");
+const roundUnknownWrap = document.getElementById("round-unknown-wrap");
+const roundUnknownList = document.getElementById("round-unknown-list");
 const startNextRoundBtn = document.getElementById("start-next-round");
 const exitPracticeBtn = document.getElementById("exit-practice");
 const exitAfterRoundBtn = document.getElementById("exit-after-round");
@@ -72,6 +105,7 @@ const sentencesPerRoundInput = document.getElementById("sentences-per-round");
 const sentencesPerRoundValue = document.getElementById("sentences-per-round-value");
 const autoRevealSecondsInput = document.getElementById("auto-reveal-seconds");
 const autoRevealSecondsValue = document.getElementById("auto-reveal-seconds-value");
+const darkModeToggle = document.getElementById("dark-mode-toggle");
 const resetProgressBtn = document.getElementById("reset-progress");
 let answerToastTimeoutId = null;
 
@@ -88,6 +122,10 @@ function getCurrentSentence() {
   return state.roundSentences[state.practiceIndex];
 }
 
+function getBestScore(levelId, type) {
+  return state.levelBestScores[levelId]?.[type] ?? 0;
+}
+
 function getBadgeMeta(score) {
   if (score === 100) {
     return { label: "Teljesítve", className: "completed" };
@@ -98,9 +136,9 @@ function getBadgeMeta(score) {
   return { label: "Nem próbált", className: "new" };
 }
 
-function getLevelMetrics(levelId) {
+function getTypeMetrics(levelId, type) {
   return (
-    state.levelMetrics[levelId] ?? {
+    state.levelMetrics[levelId]?.[type] ?? {
       attempts: 0,
       recentScores: [],
       lastAttemptAt: null,
@@ -109,30 +147,36 @@ function getLevelMetrics(levelId) {
   );
 }
 
-function recordLevelAttempt(levelId, knewIt) {
-  const metrics = getLevelMetrics(levelId);
-
+function setTypeMetrics(levelId, type, nextValue) {
   state.levelMetrics[levelId] = {
+    ...(state.levelMetrics[levelId] ?? {}),
+    [type]: nextValue,
+  };
+}
+
+function recordLevelAttempt(levelId, type) {
+  const metrics = getTypeMetrics(levelId, type);
+  setTypeMetrics(levelId, type, {
     attempts: metrics.attempts + 1,
     recentScores: metrics.recentScores ?? [],
     lastAttemptAt: metrics.lastAttemptAt ?? null,
     completedRounds: metrics.completedRounds ?? 0,
-  };
+  });
 }
 
-function recordCompletedRound(levelId, roundScorePercent) {
-  const metrics = getLevelMetrics(levelId);
+function recordCompletedRound(levelId, type, roundScorePercent) {
+  const metrics = getTypeMetrics(levelId, type);
   const nextRecent = [...(metrics.recentScores ?? []), roundScorePercent].slice(-5);
-  state.levelMetrics[levelId] = {
+  setTypeMetrics(levelId, type, {
     ...metrics,
     recentScores: nextRecent,
     lastAttemptAt: new Date().toISOString(),
     completedRounds: (metrics.completedRounds ?? 0) + 1,
-  };
+  });
 }
 
-function getRecentAverage(levelId) {
-  const metrics = getLevelMetrics(levelId);
+function getRecentAverage(levelId, type) {
+  const metrics = getTypeMetrics(levelId, type);
   if (!metrics.recentScores.length) return 0;
   const sum = metrics.recentScores.reduce((acc, value) => acc + value, 0);
   return Math.round(sum / metrics.recentScores.length);
@@ -143,6 +187,37 @@ function formatDateTime(dateIso) {
   const parsed = new Date(dateIso);
   if (Number.isNaN(parsed.getTime())) return "-";
   return parsed.toLocaleString("hu-HU");
+}
+
+function getLevelById(levelId) {
+  return levels.find((lvl) => lvl.id === levelId) ?? null;
+}
+
+function getEffectiveRoundLength(level, poolLength) {
+  return Math.min(
+    poolLength,
+    Math.max(1, state.settings.sentencesPerRound),
+    MAX_SENTENCES_PER_ROUND
+  );
+}
+
+function annotateSentencePool(level) {
+  if (state.currentPracticeType === PRACTICE_TYPES.single) {
+    return level.sentences.map((sentence) => ({
+      ...sentence,
+      __sourceLevelId: level.id,
+      __sourceLevelTitle: level.title,
+    }));
+  }
+  return levels
+    .filter((item) => item.id <= level.id)
+    .flatMap((item) =>
+      item.sentences.map((sentence) => ({
+        ...sentence,
+        __sourceLevelId: item.id,
+        __sourceLevelTitle: item.title,
+      }))
+    );
 }
 
 function showScreen(screenName) {
@@ -169,56 +244,134 @@ function showScreen(screenName) {
   }
 }
 
+function startPracticeFor(levelId, practiceType) {
+  state.selectedLevelId = levelId;
+  state.currentPracticeType = practiceType;
+  startRound();
+  showScreen("practice");
+}
+
+function escapeHtml(raw) {
+  return String(raw)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function renderLevels() {
   levelsList.innerHTML = "";
 
   levels.forEach((level) => {
-    const score = state.levelBestScores[level.id] ?? 0;
-    const badge = getBadgeMeta(score);
+    const singleBest = getBestScore(level.id, PRACTICE_TYPES.single);
+    const mixedBest = getBestScore(level.id, PRACTICE_TYPES.mixed);
+    const isMixedAvailable = level.id > 1;
+    const heatSourcePct = isMixedAvailable ? mixedBest : singleBest;
+    const steppedHeat = Math.min(100, Math.round(heatSourcePct / 5) * 5);
+    const heatColor = getMixedHeatColor(steppedHeat);
 
     const cardEl = document.createElement("article");
-    cardEl.className = "level-card clickable";
+    cardEl.className = "level-card";
+    cardEl.style.setProperty("--level-heat", heatColor);
     cardEl.innerHTML = `
       <div class="row row-header">
         <div>
-          <div class="muted">${level.id}. Szint</div>
-          <h3>${level.title}</h3>
-          <p class="muted">${level.description}</p>
+          <div class="level-index muted">${level.id}. Szint</div>
+          <h3>${escapeHtml(level.title)}</h3>
+          ${
+            level.description
+              ? `<p class="level-description muted">${escapeHtml(level.description)}</p>`
+              : ""
+          }
         </div>
-        <span class="badge ${badge.className}">${badge.label}</span>
       </div>
       <div class="row">
         <span class="muted">Legjobb eredmény</span>
-        <strong>${score}%</strong>
+        <strong>${singleBest}%</strong>
       </div>
-      <div class="progress"><div style="width:${score}%"></div></div>
+      ${
+        isMixedAvailable
+          ? `<div class="row">
+        <span class="muted">Legjobb eredmény (vegyes)</span>
+        <strong>${mixedBest}%</strong>
+      </div>`
+          : ""
+      }
+      <div class="progress"><div class="level-progress-fill" style="width:${heatSourcePct}%"></div></div>
+      <div class="level-buttons ${isMixedAvailable ? "" : "single-only"}">
+        <button class="level-start-btn start-mode-btn" data-level-id="${level.id}" data-mode="${PRACTICE_TYPES.single}">
+          Csak ez a szint
+        </button>
+        ${
+          isMixedAvailable
+            ? `<button class="level-start-btn mixed start-mode-btn" data-level-id="${level.id}" data-mode="${PRACTICE_TYPES.mixed}">
+          Vegyes
+        </button>`
+            : ""
+        }
+      </div>
     `;
-
-    // All levels are open by default.
-    cardEl.addEventListener("click", () => {
-      state.selectedLevelId = level.id;
-      startRound();
-      showScreen("practice");
-    });
-
     levelsList.appendChild(cardEl);
   });
+
+  document.querySelectorAll(".start-mode-btn").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      const target = event.currentTarget;
+      const levelId = Number(target.dataset.levelId);
+      const mode = target.dataset.mode;
+      if (!levelId || !mode) return;
+      startPracticeFor(levelId, mode);
+    });
+  });
+}
+
+function hexToRgb(hex) {
+  const normalized = hex.replace("#", "");
+  const bigint = Number.parseInt(normalized, 16);
+  return {
+    r: (bigint >> 16) & 255,
+    g: (bigint >> 8) & 255,
+    b: bigint & 255,
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  const toHex = (value) => value.toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function mixHex(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  const mix = (x, y) => Math.round(x + (y - x) * t);
+  return rgbToHex({
+    r: mix(ca.r, cb.r),
+    g: mix(ca.g, cb.g),
+    b: mix(ca.b, cb.b),
+  });
+}
+
+function getMixedHeatColor(steppedMixedPercent) {
+  if (steppedMixedPercent >= 100) {
+    return "#266d00";
+  }
+  const t = steppedMixedPercent / 95;
+  return mixHex("#e6f2ff", "#005da7", Math.min(1, Math.max(0, t)));
 }
 
 function renderPracticeCard() {
   const sentence = getCurrentSentence();
   if (!sentence) return;
 
-  if (state.isShowingEnglish) {
-    cardLang.textContent = "ANGOL";
-    cardText.textContent = sentence.en;
-  } else {
-    cardLang.textContent = "MAGYAR";
-    cardText.textContent = sentence.hu;
-  }
+  cardTextHu.textContent = sentence.hu;
+  cardTextEn.textContent = sentence.en;
+  card.classList.toggle("flipped", state.isShowingEnglish);
 
   const level = getSelectedLevel();
-  practiceProgress.textContent = `${state.practiceIndex + 1} / ${getRoundLength(level)} mondat - ${level.title}`;
+  const modeLabel = PRACTICE_TYPE_LABELS[state.currentPracticeType] ?? "";
+  const poolLength = state.roundSentences.length || annotateSentencePool(level).length;
+  const roundTotal = getEffectiveRoundLength(level, poolLength);
+  practiceProgress.textContent = `${state.practiceIndex + 1} / ${roundTotal} mondat - ${level.title} - ${modeLabel}`;
   timeLeftEl.textContent = String(state.timeLeft);
 }
 
@@ -245,21 +398,18 @@ function stopTimer() {
   }
 }
 
-function revealTranslation({ auto = false } = {}) {
+function revealTranslation() {
   state.isTranslatedVisible = true;
   stopTimer();
   setRatingLabels(true);
-
   revealBtn.classList.add("hidden");
   rating.classList.remove("hidden");
-
-  // Show english on reveal, then card click can always toggle both ways.
   state.isShowingEnglish = true;
   renderPracticeCard();
 }
 
 function autoRevealOnTimeout() {
-  revealTranslation({ auto: true });
+  revealTranslation();
 }
 
 function shuffleArray(items) {
@@ -273,18 +423,19 @@ function shuffleArray(items) {
 
 function startRound() {
   const level = getSelectedLevel();
-  const roundLength = getRoundLength(level);
-  state.roundSentences = shuffleArray(level.sentences).slice(0, roundLength);
+  const pool = annotateSentencePool(level);
+  const roundLength = getEffectiveRoundLength(level, pool.length);
+  state.roundSentences = shuffleArray(pool).slice(0, roundLength);
   state.practiceIndex = 0;
   state.roundAnswered = 0;
   state.roundKnown = 0;
+  state.roundUnknowns = [];
 }
 
 function startNewPracticeCard() {
   if (!state.roundSentences.length) {
     startRound();
   }
-
   state.isTranslatedVisible = false;
   state.isShowingEnglish = false;
   revealBtn.classList.remove("hidden");
@@ -293,28 +444,48 @@ function startNewPracticeCard() {
   setRatingLabels(false);
   rating.classList.remove("hidden");
   roundResult.classList.add("hidden");
+  practiceTimer.classList.remove("hidden");
+  practiceProgress.classList.remove("hidden");
+  card.classList.remove("hidden");
+  roundUnknownWrap.classList.add("hidden");
+  roundUnknownList.innerHTML = "";
   renderPracticeCard();
   startTimer();
 }
 
 function moveToNextSentence(knewIt) {
   const level = getSelectedLevel();
-  const roundLength = state.roundSentences.length || getRoundLength(level);
-  recordLevelAttempt(level.id, knewIt);
+  const type = state.currentPracticeType;
+  const roundLength = state.roundSentences.length;
+  recordLevelAttempt(level.id, type);
   state.attempts += 1;
   state.roundAnswered += 1;
   if (knewIt) state.roundKnown += 1;
+  if (!knewIt) {
+    const sentence = getCurrentSentence();
+    if (sentence) {
+      const sourceLevelId = sentence.__sourceLevelId ?? level.id;
+      const sourceLevel = getLevelById(sourceLevelId) ?? level;
+      state.roundUnknowns.push({
+        hu: sentence.hu,
+        en: sentence.en,
+        sourceLevelId: sourceLevel.id,
+        sourceLevelTitle: sentence.__sourceLevelTitle ?? sourceLevel.title,
+      });
+    }
+  }
   saveState();
   renderLevels();
   renderStats();
 
   if (state.roundAnswered >= roundLength) {
     const roundScorePercent = Math.round((state.roundKnown / roundLength) * 100);
-    state.levelBestScores[level.id] = Math.max(
-      state.levelBestScores[level.id] ?? 0,
-      roundScorePercent
-    );
-    recordCompletedRound(level.id, roundScorePercent);
+    const prevBest = getBestScore(level.id, type);
+    state.levelBestScores[level.id] = {
+      ...(state.levelBestScores[level.id] ?? {}),
+      [type]: Math.max(prevBest, roundScorePercent),
+    };
+    recordCompletedRound(level.id, type, roundScorePercent);
     saveState();
     renderLevels();
     renderStats();
@@ -341,7 +512,6 @@ function showAnswerToast(correctAnswer) {
   }
   answerToastText.textContent = correctAnswer;
   answerToast.classList.add("visible");
-
   answerToastTimeoutId = window.setTimeout(() => {
     hideAnswerToast();
   }, 1000);
@@ -351,7 +521,6 @@ function handleRating(knewIt) {
   const currentSentence = getCurrentSentence();
   if (!currentSentence) return;
 
-  // If user answers before revealing/flip, briefly show the correct answer.
   if (!state.isTranslatedVisible) {
     stopTimer();
     setRatingLabels(true);
@@ -359,7 +528,6 @@ function handleRating(knewIt) {
     state.isTranslatedVisible = true;
     showAnswerToast(currentSentence.en);
   }
-
   moveToNextSentence(knewIt);
 }
 
@@ -367,9 +535,40 @@ function showRoundResult(roundLength) {
   stopTimer();
   revealBtn.classList.add("hidden");
   rating.classList.add("hidden");
+  practiceTimer.classList.add("hidden");
+  practiceProgress.classList.add("hidden");
+  card.classList.add("hidden");
   roundResult.classList.remove("hidden");
   const percent = Math.round((state.roundKnown / roundLength) * 100);
-  roundResultText.textContent = `Eredmény: ${state.roundKnown} / ${roundLength} (${percent}%).`;
+  const modeLabel = PRACTICE_TYPE_LABELS[state.currentPracticeType] ?? "";
+  roundResultText.textContent = `Eredmény (${modeLabel}): ${state.roundKnown} / ${roundLength} (${percent}%).`;
+
+  roundUnknownList.innerHTML = "";
+  if (state.roundUnknowns.length) {
+    roundUnknownWrap.classList.remove("hidden");
+    state.roundUnknowns.forEach((item) => {
+      const li = document.createElement("li");
+
+      const huLine = document.createElement("div");
+      huLine.className = "unknown-hu";
+      huLine.textContent = item.hu;
+
+      const enLine = document.createElement("div");
+      enLine.className = "unknown-en";
+      enLine.textContent = item.en;
+
+      const metaLine = document.createElement("div");
+      metaLine.className = "unknown-meta";
+      metaLine.textContent = `(${item.sourceLevelId}. szint - ${item.sourceLevelTitle})`;
+
+      li.appendChild(huLine);
+      li.appendChild(enLine);
+      li.appendChild(metaLine);
+      roundUnknownList.appendChild(li);
+    });
+  } else {
+    roundUnknownWrap.classList.add("hidden");
+  }
 }
 
 function startNextRound() {
@@ -383,17 +582,14 @@ function resetPracticeState() {
   state.roundAnswered = 0;
   state.roundKnown = 0;
   state.roundSentences = [];
-}
-
-function exitToLevels() {
-  resetPracticeState();
-  showScreen("levels");
+  state.roundUnknowns = [];
 }
 
 function hasIncompleteRound() {
   if (state.currentScreen !== "practice") return false;
   const level = getSelectedLevel();
-  const roundLength = state.roundSentences.length || getRoundLength(level);
+  const poolLength = annotateSentencePool(level).length;
+  const roundLength = getEffectiveRoundLength(level, poolLength);
   return state.roundSentences.length > 0 && state.roundAnswered < roundLength;
 }
 
@@ -412,30 +608,30 @@ function requestExitToLevels() {
   requestLeavePractice("levels");
 }
 
-function getRoundLength(level) {
-  return Math.min(
-    level.sentences.length,
-    Math.max(1, state.settings.sentencesPerRound),
-    MAX_SENTENCES_PER_ROUND
-  );
-}
-
 function renderStats() {
-  const scores = levels.map((level) => state.levelBestScores[level.id] ?? 0);
-  const overall = Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length);
+  const bestValues = levels.flatMap((level) => [
+    getBestScore(level.id, PRACTICE_TYPES.single),
+    getBestScore(level.id, PRACTICE_TYPES.mixed),
+  ]);
+  const overall = bestValues.length
+    ? Math.round(bestValues.reduce((sum, value) => sum + value, 0) / bestValues.length)
+    : 0;
   statsOverall.textContent = `${overall}%`;
   statsAttempts.textContent = String(state.attempts);
 
   statsLevels.innerHTML = "";
   levels.forEach((level) => {
-    const score = state.levelBestScores[level.id] ?? 0;
-    const badge = getBadgeMeta(score);
-    const metrics = getLevelMetrics(level.id);
-    const recentAverage = getRecentAverage(level.id);
-    const lastAttemptText = formatDateTime(metrics.lastAttemptAt);
+    const singleBest = getBestScore(level.id, PRACTICE_TYPES.single);
+    const mixedBest = getBestScore(level.id, PRACTICE_TYPES.mixed);
+    const badge = getBadgeMeta(Math.max(singleBest, mixedBest));
+    const singleMetrics = getTypeMetrics(level.id, PRACTICE_TYPES.single);
+    const mixedMetrics = getTypeMetrics(level.id, PRACTICE_TYPES.mixed);
 
     const item = document.createElement("article");
     item.className = "level-card";
+    const statsBarPct = Math.max(singleBest, mixedBest);
+    const statsSteppedHeat = Math.min(100, Math.round(statsBarPct / 5) * 5);
+    item.style.setProperty("--level-heat", getMixedHeatColor(statsSteppedHeat));
     item.innerHTML = `
       <div class="row row-header">
         <div>
@@ -445,26 +641,46 @@ function renderStats() {
         <span class="badge ${badge.className}">${badge.label}</span>
       </div>
       <div class="row">
-        <span class="muted">Legjobb eredmény</span>
-        <strong>${score}%</strong>
+        <span class="muted">Legjobb eredmény (csak ez a szint)</span>
+        <strong>${singleBest}%</strong>
       </div>
       <div class="row">
-        <span class="muted">Utolsó 5 kör átlaga</span>
-        <strong>${recentAverage}%</strong>
+        <span class="muted">Legjobb eredmény (vegyes)</span>
+        <strong>${mixedBest}%</strong>
       </div>
       <div class="row">
-        <span class="muted">Mondatok száma</span>
-        <strong>${metrics.attempts}</strong>
+        <span class="muted">Utolsó 5 kör átlaga (csak ez a szint)</span>
+        <strong>${getRecentAverage(level.id, PRACTICE_TYPES.single)}%</strong>
       </div>
       <div class="row">
-        <span class="muted">Körök száma (befejezett)</span>
-        <strong>${metrics.completedRounds ?? 0}</strong>
+        <span class="muted">Utolsó 5 kör átlaga (vegyes)</span>
+        <strong>${getRecentAverage(level.id, PRACTICE_TYPES.mixed)}%</strong>
       </div>
       <div class="row">
-        <span class="muted">Legutóbbi próbálkozás</span>
-        <strong>${lastAttemptText}</strong>
+        <span class="muted">Mondatok száma (csak ez a szint)</span>
+        <strong>${singleMetrics.attempts}</strong>
       </div>
-      <div class="progress"><div style="width:${score}%"></div></div>
+      <div class="row">
+        <span class="muted">Mondatok száma (vegyes)</span>
+        <strong>${mixedMetrics.attempts}</strong>
+      </div>
+      <div class="row">
+        <span class="muted">Körök száma (befejezett, csak ez a szint)</span>
+        <strong>${singleMetrics.completedRounds ?? 0}</strong>
+      </div>
+      <div class="row">
+        <span class="muted">Körök száma (befejezett, vegyes)</span>
+        <strong>${mixedMetrics.completedRounds ?? 0}</strong>
+      </div>
+      <div class="row">
+        <span class="muted">Legutóbbi próbálkozás (csak ez a szint)</span>
+        <strong>${formatDateTime(singleMetrics.lastAttemptAt)}</strong>
+      </div>
+      <div class="row">
+        <span class="muted">Legutóbbi próbálkozás (vegyes)</span>
+        <strong>${formatDateTime(mixedMetrics.lastAttemptAt)}</strong>
+      </div>
+      <div class="progress"><div class="level-progress-fill" style="width:${Math.max(singleBest, mixedBest)}%"></div></div>
     `;
     statsLevels.appendChild(item);
   });
@@ -475,6 +691,11 @@ function renderSettings() {
   sentencesPerRoundValue.textContent = String(state.settings.sentencesPerRound);
   autoRevealSecondsInput.value = String(state.settings.autoRevealSeconds);
   autoRevealSecondsValue.textContent = String(state.settings.autoRevealSeconds);
+  darkModeToggle.checked = Boolean(state.settings.darkMode);
+}
+
+function applyTheme() {
+  document.body.classList.toggle("dark", Boolean(state.settings.darkMode));
 }
 
 function saveState() {
@@ -487,6 +708,39 @@ function saveState() {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(persistableState));
 }
 
+function normalizeLoadedBestScores(rawBestScores) {
+  const defaults = createDefaultBestScores();
+  levels.forEach((level) => {
+    const loaded = rawBestScores?.[level.id];
+    if (typeof loaded === "number") {
+      defaults[level.id][PRACTICE_TYPES.single] = loaded;
+    } else if (loaded && typeof loaded === "object") {
+      defaults[level.id][PRACTICE_TYPES.single] = Number(
+        loaded[PRACTICE_TYPES.single] ?? 0
+      );
+      defaults[level.id][PRACTICE_TYPES.mixed] = Number(loaded[PRACTICE_TYPES.mixed] ?? 0);
+    }
+  });
+  return defaults;
+}
+
+function normalizeLoadedMetrics(rawMetrics) {
+  const defaults = createDefaultLevelMetrics();
+  levels.forEach((level) => {
+    const loaded = rawMetrics?.[level.id];
+    if (!loaded || typeof loaded !== "object") return;
+    [PRACTICE_TYPES.single, PRACTICE_TYPES.mixed].forEach((type) => {
+      if (loaded[type] && typeof loaded[type] === "object") {
+        defaults[level.id][type] = {
+          ...createDefaultTypeMetrics(),
+          ...loaded[type],
+        };
+      }
+    });
+  });
+  return defaults;
+}
+
 function loadState() {
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) return;
@@ -494,14 +748,8 @@ function loadState() {
   try {
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === "object") {
-      state.levelBestScores = {
-        ...state.levelBestScores,
-        ...(parsed.levelBestScores ?? {}),
-      };
-      state.levelMetrics = {
-        ...createDefaultLevelMetrics(),
-        ...(parsed.levelMetrics ?? {}),
-      };
+      state.levelBestScores = normalizeLoadedBestScores(parsed.levelBestScores);
+      state.levelMetrics = normalizeLoadedMetrics(parsed.levelMetrics);
       state.attempts = Number(parsed.attempts ?? 0);
       state.settings = {
         ...DEFAULT_SETTINGS,
@@ -536,7 +784,6 @@ card.addEventListener("click", () => {
     revealBtn.classList.add("hidden");
     rating.classList.remove("hidden");
   }
-  // Card can always be flipped back and forth by click.
   state.isShowingEnglish = !state.isShowingEnglish;
   renderPracticeCard();
 });
@@ -590,8 +837,14 @@ autoRevealSecondsInput.addEventListener("input", (event) => {
   saveState();
 });
 
+darkModeToggle.addEventListener("change", (event) => {
+  state.settings.darkMode = event.target.checked;
+  applyTheme();
+  saveState();
+});
+
 resetProgressBtn.addEventListener("click", () => {
-  state.levelBestScores = Object.fromEntries(levels.map((level) => [level.id, 0]));
+  state.levelBestScores = createDefaultBestScores();
   state.levelMetrics = createDefaultLevelMetrics();
   state.attempts = 0;
   saveState();
@@ -600,8 +853,10 @@ resetProgressBtn.addEventListener("click", () => {
 });
 
 loadState();
+applyTheme();
 renderLevels();
 renderStats();
 renderSettings();
+startRound();
 renderPracticeCard();
 registerServiceWorker();
