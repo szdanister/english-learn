@@ -1,0 +1,10 @@
+{
+  "name": "Linguist - English Sentence Master",
+  "short_name": "Linguist",
+  "lang": "hu",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f9fb",
+  "theme_color": "#005da7",
+  "description": "Mobilbarát angol mondat gyakorló webapp magyar felhasználóknak."
+}

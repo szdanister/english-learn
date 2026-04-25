@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+
+<html class="light" lang="hu"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Linguist - Beállítások</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#ffbb00",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "background": "#f7f9fb",
+                        "surface-container-high": "#e6e8ea",
+                        "secondary-fixed": "#88fd54",
+                        "surface": "#f7f9fb",
+                        "on-error-container": "#93000a",
+                        "surface-container-low": "#f2f4f6",
+                        "surface-dim": "#d8dadc",
+                        "surface-bright": "#f7f9fb",
+                        "on-secondary-container": "#287100",
+                        "primary-fixed": "#d4e3ff",
+                        "error-container": "#ffdad6",
+                        "error": "#ba1a1a",
+                        "on-background": "#191c1e",
+                        "inverse-surface": "#2d3133",
+                        "on-secondary-fixed": "#062100",
+                        "primary-container": "#2976c7",
+                        "inverse-primary": "#a4c9ff",
+                        "outline-variant": "#c1c7d3",
+                        "on-secondary-fixed-variant": "#1a5200",
+                        "secondary-fixed-dim": "#6de039",
+                        "secondary-container": "#85fa51",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-container-highest": "#e0e3e5",
+                        "on-tertiary-fixed-variant": "#5d4200",
+                        "surface-variant": "#e0e3e5",
+                        "on-tertiary-container": "#fffbff",
+                        "primary": "#005da7",
+                        "secondary": "#266d00",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#785600",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffdea4",
+                        "primary-fixed-dim": "#a4c9ff",
+                        "on-primary-container": "#fdfcff",
+                        "on-primary-fixed-variant": "#004883",
+                        "on-primary-fixed": "#001c39",
+                        "on-surface": "#191c1e",
+                        "outline": "#717783",
+                        "on-tertiary-fixed": "#261900",
+                        "surface-container": "#eceef0",
+                        "on-surface-variant": "#414751",
+                        "surface-tint": "#0060ac",
+                        "tertiary-container": "#976d00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "12px",
+                        "base": "8px",
+                        "gutter": "16px",
+                        "md": "24px",
+                        "margin-mobile": "20px",
+                        "xs": "4px",
+                        "xl": "64px",
+                        "lg": "40px",
+                        "margin-desktop": "auto"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Lexend"],
+                        "body-lg": ["Lexend"],
+                        "display-lg": ["Lexend"],
+                        "body-md": ["Lexend"],
+                        "headline-md": ["Lexend"],
+                        "title-lg": ["Lexend"],
+                        "label-sm": ["Lexend"],
+                        "lexend": ["Lexend"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-md": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "title-lg": ["22px", {"lineHeight": "28px", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .tactile-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #005da7;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 4px 6px rgba(0, 93, 167, 0.2);
+            transition: all 0.2s ease;
+        }
+        .tactile-slider::-webkit-slider-thumb:active {
+            transform: scale(1.15);
+            box-shadow: 0 6px 10px rgba(0, 93, 167, 0.3);
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen font-body-md text-body-md overflow-x-hidden">
+<!-- TopAppBar -->
+<header class="bg-[#F8FAFC] dark:bg-slate-950 border-b-2 border-slate-200 dark:border-slate-800 shadow-sm sticky top-0 z-40">
+<div class="flex justify-between items-center w-full px-6 py-4">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#4A90E2] dark:text-blue-400" data-icon="menu_book">menu_book</span>
+<h1 class="text-2xl font-extrabold text-[#4A90E2] dark:text-blue-400 tracking-tighter font-['Lexend']">Beállítások</h1>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+<img alt="User" class="w-full h-full object-cover" data-alt="minimalist user avatar placeholder showing a friendly simplified silhouette in a blue circle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCwR-C6MSsi8BE84WH7r8V4BOvorjRwGGdcr2_bk8DvzzXiUVEiRV0p4IMgu5chCwdOzYwXqhBj7wPPnO1F4BH4i_vGRqBllCKyt49z7ZFPX70pFSmvdRgbmZ3k28DwTqS4KugHqAgh5kkjBOba0ZtQOa2JoBoF_xIvupLpceJfvM3mWtPHfLfUzN3-4MxzR2_6xEozfuVPyOxgosDDRII38BBo65VQs5lSUXDFEk73TlQpTvBlpElpzp3BNkEQqXEuagrbgJv-tjE"/>
+</div>
+</div>
+</div>
+</header>
+<main class="max-w-screen-md mx-auto px-margin-mobile py-lg flex flex-col gap-lg pb-40">
+<!-- SECTION: PRACTICE SETTINGS -->
+<section class="flex flex-col gap-md">
+<h2 class="font-label-lg text-label-lg text-outline uppercase px-2">GYAKORLÁS BEÁLLÍTÁSAI</h2>
+<div class="bg-surface-container-lowest rounded-xl p-md shadow-[0_4px_12px_rgba(0,93,167,0.08)] border border-surface-container-high flex flex-col gap-gutter">
+<!-- Mondatok száma -->
+<div class="flex flex-col gap-sm">
+<div class="flex justify-between items-center">
+<label class="font-title-lg text-body-md text-on-surface">Mondatok száma körönként</label>
+<span class="bg-primary-fixed-dim text-primary font-bold px-3 py-1 rounded-full text-label-lg">5</span>
+</div>
+<input class="tactile-slider w-full h-2 bg-surface-container-high rounded-full appearance-none" max="20" min="1" type="range" value="5"/>
+<div class="flex justify-between text-label-sm text-outline px-1">
+<span>1</span>
+<span>20</span>
+</div>
+</div>
+<div class="h-px bg-surface-container-high"></div>
+<!-- Automatikus fordítás -->
+<div class="flex flex-col gap-sm">
+<div class="flex justify-between items-center">
+<label class="font-title-lg text-body-md text-on-surface">Automatikus fordítás (másodperc)</label>
+<span class="bg-primary-fixed-dim text-primary font-bold px-3 py-1 rounded-full text-label-lg">10s</span>
+</div>
+<input class="tactile-slider w-full h-2 bg-surface-container-high rounded-full appearance-none" max="30" min="0" type="range" value="10"/>
+<div class="flex justify-between text-label-sm text-outline px-1">
+<span>Instant</span>
+<span>30s</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION: GENERAL -->
+<section class="flex flex-col gap-md">
+<h2 class="font-label-lg text-label-lg text-outline uppercase px-2">ÁLTALÁNOS</h2>
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_4px_12px_rgba(0,93,167,0.08)] border border-surface-container-high divide-y divide-surface-container-high">
+<!-- Dark Mode -->
+<div class="flex items-center justify-between p-md">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="dark_mode">dark_mode</span>
+</div>
+<span class="font-title-lg text-body-md text-on-surface">Sötét mód</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-14 h-8 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<!-- Notifications -->
+<div class="flex items-center justify-between p-md">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-xl bg-surface-container-low flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</div>
+<span class="font-title-lg text-body-md text-on-surface">Értesítések</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-14 h-8 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- SECTION: DATA -->
+<section class="flex flex-col gap-md">
+<h2 class="font-label-lg text-label-lg text-outline uppercase px-2">ADATOK</h2>
+<div class="bg-surface-container-lowest rounded-xl p-md shadow-[0_4px_12px_rgba(0,93,167,0.08)] border border-surface-container-high">
+<button class="w-full py-4 px-6 rounded-xl border-b-4 border-on-error-container bg-error text-on-error font-title-lg text-body-md flex items-center justify-center gap-sm active:translate-y-1 active:border-b-0 transition-all">
+<span class="material-symbols-outlined" data-icon="delete_sweep">delete_sweep</span>
+                    Eredmények törlése
+                </button>
+<p class="text-label-sm text-outline mt-sm text-center">Ez a művelet nem vonható vissza. Minden haladásod elvész.</p>
+</div>
+</section>
+<!-- Version Info (Moved from decorative section) -->
+<div class="mt-4 text-center">
+<p class="font-label-lg text-outline text-xs opacity-60">Linguist v2.4.0</p>
+</div>
+</main>
+<!-- BottomNavBar (Updated to 4 items using COMPONENTS_19 style) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-6 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-100 dark:border-slate-800 shadow-[0_-4px_12px_rgba(74,144,226,0.1)] rounded-t-3xl">
+<!-- Tab: Szintek -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-1.5 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="layers">layers</span>
+<span class="font-lexend font-medium text-[11px]">Szintek</span>
+</a>
+<!-- Tab: Gyakorlás -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-1.5 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+<span class="font-lexend font-medium text-[11px]">Gyakorlás</span>
+</a>
+<!-- Tab: Statisztika -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-1.5 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="bar_chart">bar_chart</span>
+<span class="font-lexend font-medium text-[11px]">Statisztika</span>
+</a>
+<!-- Tab: Beállítások (ACTIVE) -->
+<a class="flex flex-col items-center justify-center bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-2xl px-5 py-1.5 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="settings" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-lexend font-medium text-[11px]">Beállítások</span>
+</a>
+</nav>
+</body></html>

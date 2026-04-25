@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+
+<html lang="hu"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed-dim": "#ffbb00",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "background": "#f7f9fb",
+                    "surface-container-high": "#e6e8ea",
+                    "secondary-fixed": "#88fd54",
+                    "surface": "#f7f9fb",
+                    "on-error-container": "#93000a",
+                    "surface-container-low": "#f2f4f6",
+                    "surface-dim": "#d8dadc",
+                    "surface-bright": "#f7f9fb",
+                    "on-secondary-container": "#287100",
+                    "primary-fixed": "#d4e3ff",
+                    "error-container": "#ffdad6",
+                    "error": "#ba1a1a",
+                    "on-background": "#191c1e",
+                    "inverse-surface": "#2d3133",
+                    "on-secondary-fixed": "#062100",
+                    "primary-container": "#2976c7",
+                    "inverse-primary": "#a4c9ff",
+                    "outline-variant": "#c1c7d3",
+                    "on-secondary-fixed-variant": "#1a5200",
+                    "secondary-fixed-dim": "#6de039",
+                    "secondary-container": "#85fa51",
+                    "inverse-on-surface": "#eff1f3",
+                    "surface-container-highest": "#e0e3e5",
+                    "on-tertiary-fixed-variant": "#5d4200",
+                    "surface-variant": "#e0e3e5",
+                    "on-tertiary-container": "#fffbff",
+                    "primary": "#005da7",
+                    "secondary": "#266d00",
+                    "on-secondary": "#ffffff",
+                    "tertiary": "#785600",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed": "#ffdea4",
+                    "primary-fixed-dim": "#a4c9ff",
+                    "on-primary-container": "#fdfcff",
+                    "on-primary-fixed-variant": "#004883",
+                    "on-primary-fixed": "#001c39",
+                    "on-surface": "#191c1e",
+                    "outline": "#717783",
+                    "on-tertiary-fixed": "#261900",
+                    "surface-container": "#eceef0",
+                    "on-surface-variant": "#414751",
+                    "surface-tint": "#0060ac",
+                    "tertiary-container": "#976d00"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "sm": "12px",
+                    "base": "8px",
+                    "gutter": "16px",
+                    "md": "24px",
+                    "margin-mobile": "20px",
+                    "xs": "4px",
+                    "xl": "64px",
+                    "lg": "40px",
+                    "margin-desktop": "auto"
+            },
+            "fontFamily": {
+                    "lexend": ["Lexend", "sans-serif"],
+                    "label-lg": ["Lexend"],
+                    "body-lg": ["Lexend"],
+                    "display-lg": ["Lexend"],
+                    "body-md": ["Lexend"],
+                    "headline-md": ["Lexend"],
+                    "title-lg": ["Lexend"],
+                    "label-sm": ["Lexend"]
+            },
+            "fontSize": {
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "display-lg": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "title-lg": ["22px", {"lineHeight": "28px", "fontWeight": "500"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            background-color: #F8FAFC;
+            min-height: max(884px, 100dvh);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .card-lift {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-lift:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-md docked full-width top-0 sticky z-40 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+<div class="flex justify-between items-center w-full px-5 py-3 max-w-screen-xl mx-auto">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-blue-500 dark:text-blue-400" data-icon="translate">translate</span>
+<h1 class="text-blue-600 dark:text-blue-400 font-black tracking-tight text-lg font-lexend">Linguist</h1>
+</div>
+<button class="hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors p-2 rounded-full active:scale-95 duration-200 ease-in-out">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-400" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="max-w-xl mx-auto px-margin-mobile mt-base">
+<!-- Hero Selection Header -->
+<section class="py-md">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-xs">Üdvözlünk újra!</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Válassz egy szintet és folytasd a tanulást.</p>
+</section>
+<!-- Levels Bento-ish Layout -->
+<div class="grid grid-cols-1 gap-gutter mb-xl">
+<!-- Level 1 Card -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-[0_4px_12px_rgba(74,144,226,0.08)] card-lift relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-2 h-full bg-secondary"></div>
+<div class="flex justify-between items-start mb-sm">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-secondary font-bold">1. Szint</span>
+<h3 class="font-title-lg text-title-lg text-on-surface mt-xs">Kezdő alapok</h3>
+</div>
+<div class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full font-label-sm text-label-sm">
+                        Teljesítve
+                    </div>
+</div>
+<div class="mt-md">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Legjobb eredmény</span>
+<span class="font-label-sm text-label-sm text-secondary font-bold">100%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary to-secondary rounded-full" style="width: 100%"></div>
+</div>
+</div>
+</div>
+<!-- Level 2 Card -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-[0_4px_12px_rgba(74,144,226,0.08)] card-lift relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-2 h-full bg-primary"></div>
+<div class="flex justify-between items-start mb-sm">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-primary font-bold">2. Szint</span>
+<h3 class="font-title-lg text-title-lg text-on-surface mt-xs">Alapvető kifejezések</h3>
+</div>
+<div class="bg-primary-fixed text-on-primary-fixed px-3 py-1 rounded-full font-label-sm text-label-sm">
+                        Folyamatban
+                    </div>
+</div>
+<div class="mt-md">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Legjobb eredmény</span>
+<span class="font-label-sm text-label-sm text-primary font-bold">65%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 65%"></div>
+</div>
+</div>
+</div>
+<!-- Level 3 Card -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-[0_4px_12px_rgba(74,144,226,0.08)] card-lift relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-2 h-full bg-primary-fixed-dim"></div>
+<div class="flex justify-between items-start mb-sm">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant font-bold">3. Szint</span>
+<h3 class="font-title-lg text-title-lg text-on-surface mt-xs">Mindennapi társalgás</h3>
+</div>
+<span class="material-symbols-outlined text-primary" data-icon="lock_open">lock_open</span>
+</div>
+<div class="mt-md">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Legjobb eredmény</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold">12%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-primary-fixed-dim rounded-full" style="width: 12%"></div>
+</div>
+</div>
+</div>
+<!-- Level 4 Card -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-[0_4px_12px_rgba(74,144,226,0.08)] card-lift relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-2 h-full bg-surface-container-high"></div>
+<div class="flex justify-between items-start mb-sm">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant font-bold">4. Szint</span>
+<h3 class="font-title-lg text-title-lg text-on-surface mt-xs">Munkahelyi szókincs</h3>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="lock_open">lock_open</span>
+</div>
+<div class="mt-md">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Legjobb eredmény</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold">0%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-surface-container-high rounded-full" style="width: 0%"></div>
+</div>
+</div>
+</div>
+<!-- Level 5 Card -->
+<div class="bg-surface-container-lowest rounded-xl p-md border border-outline-variant shadow-[0_4px_12px_rgba(74,144,226,0.08)] card-lift relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-2 h-full bg-surface-container-high"></div>
+<div class="flex justify-between items-start mb-sm">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-widest text-on-surface-variant font-bold">5. Szint</span>
+<h3 class="font-title-lg text-title-lg text-on-surface mt-xs">Haladó nyelvtan</h3>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="lock_open">lock_open</span>
+</div>
+<div class="mt-md">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Legjobb eredmény</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-bold">0%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+<div class="h-full bg-surface-container-high rounded-full" style="width: 0%"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-6 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg shadow-[0_-4px_12px_rgba(74,144,226,0.1)] rounded-t-3xl border-t border-slate-100 dark:border-slate-800">
+<!-- Szintek -->
+<a class="flex flex-col items-center justify-center bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 rounded-2xl px-5 py-1.5 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="layers" style="font-variation-settings: 'FILL' 1;">layers</span>
+<span class="font-lexend font-medium text-[11px]">Szintek</span>
+</a>
+<!-- Gyakorlás -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-1.5 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="school">school</span>
+<span class="font-lexend font-medium text-[11px]">Gyakorlás</span>
+</a>
+<!-- Statisztika -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-1.5 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="bar_chart">bar_chart</span>
+<span class="font-lexend font-medium text-[11px]">Statisztika</span>
+</a>
+<!-- Beállítások -->
+<a class="flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 px-5 py-1.5 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-transform duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-lexend font-medium text-[11px]">Beállítások</span>
+</a>
+</nav>
+</body></html>
