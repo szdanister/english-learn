@@ -219,6 +219,11 @@
       color: var(--danger-text);
     }
 
+    .badge.level-sentence-badge {
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
     .progress {
       margin-top: 8px;
       height: 10px;
@@ -244,6 +249,14 @@
     .sub-title {
       margin: 0 0 14px;
       color: var(--muted);
+    }
+
+    .levels-subtitle-main {
+      margin-bottom: 4px;
+    }
+
+    .levels-subtitle-total {
+      margin-bottom: 10px;
     }
 
     .practice-card {
@@ -352,6 +365,25 @@
       margin-bottom: 8px;
     }
 
+    .practice-title-group {
+      display: flex;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    #practice-context {
+      font-size: 21px;
+      font-weight: 700;
+      color: var(--primary);
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      overflow-wrap: anywhere;
+      line-height: 1.2;
+    }
+
     .close-btn {
       border: 1px solid var(--border);
       background: var(--card);
@@ -453,6 +485,16 @@
       width: 100%;
     }
 
+    select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
     .unknown-list {
       margin: 12px 0 0;
       padding-left: 18px;
@@ -497,13 +539,16 @@
   <main class="container">
     <section id="levels-screen" class="screen active">
       <h2 class="section-title">Szintek</h2>
-      <p class="sub-title">Minden szint nyitva van. Válassz egyet és gyakorolj.</p>
+      <p class="sub-title levels-subtitle-main">Minden szint nyitva van. Válassz egyet és gyakorolj!</p>
+      <p class="sub-title levels-subtitle-total">Összes mondat: <strong id="total-sentences-count">0</strong></p>
       <div id="levels-list"></div>
     </section>
 
     <section id="practice-screen" class="screen">
       <div class="practice-top-row">
-        <h2 class="section-title" style="margin-bottom:0;">Gyakorlás</h2>
+        <div class="practice-title-group">
+          <span id="practice-context"></span>
+        </div>
         <button id="exit-practice" class="close-btn" aria-label="Kilépés">×</button>
       </div>
       <p class="muted" id="practice-progress"></p>
@@ -529,11 +574,15 @@
         <h3 style="margin-top:0;">Kör vége</h3>
         <p id="round-result-text" class="muted"></p>
         <div id="round-unknown-wrap" class="hidden">
-          <p class="muted" style="margin:12px 0 6px;">Nem tudott mondatok</p>
+          <h3 style="margin:12px 0 6px;">Nem tudott mondatok</h3>
           <ul id="round-unknown-list" class="unknown-list"></ul>
         </div>
+        <div id="round-known-wrap" class="hidden">
+          <h3 style="margin:12px 0 6px;">Tudott mondatok</h3>
+          <ul id="round-known-list" class="unknown-list"></ul>
+        </div>
         <button id="start-next-round" class="reveal-btn" style="margin-top:8px;">Új kör indítása</button>
-        <button id="exit-after-round" class="rate-btn unknown">Kilépés a szintekhez</button>
+        <button id="exit-after-round" class="rate-btn unknown">Vissza a szintekhez</button>
       </div>
     </section>
 
@@ -569,10 +618,29 @@
       </div>
       <div class="settings-card">
         <div class="setting-row">
-          <label for="auto-reveal-seconds">Automatikus fordítás (mp)</label>
+          <label for="tts-enabled-toggle">Angol felolvasás</label>
+          <input id="tts-enabled-toggle" type="checkbox" />
+        </div>
+      </div>
+      <div class="settings-card">
+        <div class="setting-row">
+          <label for="english-voice-select">Angol felolvasó hang</label>
+        </div>
+        <select id="english-voice-select"></select>
+      </div>
+      <div class="settings-card">
+        <div class="setting-row">
+          <label for="auto-reveal-seconds">Időkorlát mondatoknál (mp)</label>
           <strong id="auto-reveal-seconds-value">10</strong>
         </div>
         <input id="auto-reveal-seconds" type="range" min="3" max="30" value="10" />
+      </div>
+      <div class="settings-card">
+        <div class="setting-row">
+          <label for="toast-duration-seconds">Helyes válasz megjelenítése kis ablakban (mp)</label>
+          <strong id="toast-duration-seconds-value">1.0</strong>
+        </div>
+        <input id="toast-duration-seconds" type="range" min="1" max="5" step="0.1" value="1.0" />
       </div>
       <div class="settings-card">
         <button id="reset-progress" class="rate-btn unknown" style="margin-top:0;">Eredmények törlése</button>
@@ -591,6 +659,6 @@
     <p id="answer-toast-text" class="toast-text"></p>
   </div>
 
-  <script type="module" src="./app.js?v=2"></script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>
