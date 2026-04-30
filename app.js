@@ -4,7 +4,10 @@ const STORAGE_KEY = "linguist-state-v1";
 const DEFAULT_SETTINGS = {
   sentencesPerRound: 5,
   autoRevealSeconds: 10,
+  toastDurationSeconds: 1,
   darkMode: false,
+  ttsEnabled: true,
+  englishVoiceURI: "",
 };
 const MAX_SENTENCES_PER_ROUND = 30;
 const PRACTICE_TYPES = {
@@ -63,9 +66,11 @@ const state = {
   roundKnown: 0,
   roundSentences: [],
   roundUnknowns: [],
+  roundKnowns: [],
   levelBestScores: createDefaultBestScores(),
   levelMetrics: createDefaultLevelMetrics(),
   settings: { ...DEFAULT_SETTINGS },
+  lastSpokenSignature: "",
 };
 
 const levelsScreen = document.getElementById("levels-screen");
@@ -73,8 +78,10 @@ const practiceScreen = document.getElementById("practice-screen");
 const statsScreen = document.getElementById("stats-screen");
 const settingsScreen = document.getElementById("settings-screen");
 const levelsList = document.getElementById("levels-list");
+const totalSentencesCount = document.getElementById("total-sentences-count");
 
 const practiceProgress = document.getElementById("practice-progress");
+const practiceContext = document.getElementById("practice-context");
 const practiceTimer = document.getElementById("practice-timer");
 const timeLeftEl = document.getElementById("time-left");
 const card = document.getElementById("practice-card");
@@ -93,6 +100,8 @@ const roundResult = document.getElementById("round-result");
 const roundResultText = document.getElementById("round-result-text");
 const roundUnknownWrap = document.getElementById("round-unknown-wrap");
 const roundUnknownList = document.getElementById("round-unknown-list");
+const roundKnownWrap = document.getElementById("round-known-wrap");
+const roundKnownList = document.getElementById("round-known-list");
 const startNextRoundBtn = document.getElementById("start-next-round");
 const exitPracticeBtn = document.getElementById("exit-practice");
 const exitAfterRoundBtn = document.getElementById("exit-after-round");
@@ -105,9 +114,168 @@ const sentencesPerRoundInput = document.getElementById("sentences-per-round");
 const sentencesPerRoundValue = document.getElementById("sentences-per-round-value");
 const autoRevealSecondsInput = document.getElementById("auto-reveal-seconds");
 const autoRevealSecondsValue = document.getElementById("auto-reveal-seconds-value");
+const toastDurationSecondsInput = document.getElementById("toast-duration-seconds");
+const toastDurationSecondsValue = document.getElementById("toast-duration-seconds-value");
 const darkModeToggle = document.getElementById("dark-mode-toggle");
+const ttsEnabledToggle = document.getElementById("tts-enabled-toggle");
+const englishVoiceSelect = document.getElementById("english-voice-select");
 const resetProgressBtn = document.getElementById("reset-progress");
 let answerToastTimeoutId = null;
+let availableEnglishVoices = [];
+
+function clampToastDuration(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return DEFAULT_SETTINGS.toastDurationSeconds;
+  return Math.min(5, Math.max(1, Math.round(numeric * 10) / 10));
+}
+
+function canUseSpeechSynthesis() {
+  return "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+}
+
+function getEnglishVoices(allVoices) {
+  return allVoices.filter((voice) => voice?.lang?.toLowerCase().startsWith("en"));
+}
+
+function getSentenceSpeakKey() {
+  return `${state.selectedLevelId}:${state.currentPracticeType}:${state.practiceIndex}`;
+}
+
+function scoreVoice(voice) {
+  const lang = (voice.lang ?? "").toLowerCase();
+  const name = (voice.name ?? "").toLowerCase();
+  let score = 0;
+
+  if (lang === "en-gb") score += 60;
+  if (lang.startsWith("en-gb")) score += 35;
+  if (lang.startsWith("en")) score += 10;
+  if (voice.localService) score += 5;
+  if (
+    name.includes("female") ||
+    name.includes("woman") ||
+    name.includes("zira") ||
+    name.includes("libby") ||
+    name.includes("hazel") ||
+    name.includes("sonia") ||
+    name.includes("sara")
+  ) {
+    score += 25;
+  }
+
+  return score;
+}
+
+function compareVoices(a, b) {
+  return scoreVoice(b) - scoreVoice(a);
+}
+
+function getPreferredVoice() {
+  if (!availableEnglishVoices.length) return null;
+  return [...availableEnglishVoices].sort(compareVoices)[0] ?? null;
+}
+
+function getSelectedVoice() {
+  const selectedUri = state.settings.englishVoiceURI;
+  if (selectedUri) {
+    const exact = availableEnglishVoices.find((voice) => voice.voiceURI === selectedUri);
+    if (exact) return exact;
+  }
+  return getPreferredVoice();
+}
+
+function getVoiceLabel(voice) {
+  const localTag = voice.localService ? "offline" : "online";
+  return `${voice.name} (${voice.lang}, ${localTag})`;
+}
+
+function stopSpeech() {
+  if (!canUseSpeechSynthesis()) return;
+  window.speechSynthesis.cancel();
+}
+
+function speakEnglish(text, reason = "general") {
+  const phrase = String(text ?? "").trim();
+  if (!phrase || !canUseSpeechSynthesis()) return;
+  if (!state.settings.ttsEnabled) return;
+  if (state.currentScreen !== "practice") return;
+
+  const signature = `${reason}:${getSentenceSpeakKey()}:${phrase}`;
+  if (state.lastSpokenSignature === signature) return;
+  state.lastSpokenSignature = signature;
+
+  const utterance = new SpeechSynthesisUtterance(phrase);
+  const voice = getSelectedVoice();
+  if (voice) {
+    utterance.voice = voice;
+    utterance.lang = voice.lang || "en-GB";
+  } else {
+    utterance.lang = "en-GB";
+  }
+  utterance.rate = 1;
+  utterance.pitch = 1;
+
+  stopSpeech();
+  window.speechSynthesis.speak(utterance);
+}
+
+function renderVoiceSelectOptions() {
+  if (!englishVoiceSelect) return;
+
+  englishVoiceSelect.innerHTML = "";
+  if (!canUseSpeechSynthesis()) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "A böngésző nem támogatja a felolvasást";
+    englishVoiceSelect.appendChild(option);
+    englishVoiceSelect.disabled = true;
+    return;
+  }
+
+  if (!availableEnglishVoices.length) {
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Nincs elérhető angol hang";
+    englishVoiceSelect.appendChild(option);
+    englishVoiceSelect.disabled = true;
+    return;
+  }
+
+  englishVoiceSelect.disabled = !state.settings.ttsEnabled;
+  availableEnglishVoices.forEach((voice) => {
+    const option = document.createElement("option");
+    option.value = voice.voiceURI;
+    option.textContent = getVoiceLabel(voice);
+    englishVoiceSelect.appendChild(option);
+  });
+
+  const preferred = getSelectedVoice();
+  const nextUri = preferred?.voiceURI ?? "";
+  englishVoiceSelect.value = nextUri;
+  if (state.settings.englishVoiceURI !== nextUri) {
+    state.settings.englishVoiceURI = nextUri;
+    saveState();
+  }
+}
+
+function refreshAvailableVoices() {
+  if (!canUseSpeechSynthesis()) {
+    availableEnglishVoices = [];
+    renderSettings();
+    return;
+  }
+
+  const all = window.speechSynthesis.getVoices();
+  availableEnglishVoices = getEnglishVoices(all).sort(compareVoices);
+  renderSettings();
+}
+
+function initializeSpeechVoices() {
+  if (!canUseSpeechSynthesis()) return;
+
+  refreshAvailableVoices();
+  window.speechSynthesis.addEventListener("voiceschanged", refreshAvailableVoices);
+  window.setTimeout(refreshAvailableVoices, 0);
+}
 
 function setRatingLabels(isPastTense) {
   unknownBtn.textContent = isPastTense ? "Nem tudtam" : "Nem tudom";
@@ -120,6 +288,10 @@ function getSelectedLevel() {
 
 function getCurrentSentence() {
   return state.roundSentences[state.practiceIndex];
+}
+
+function getPracticeContextLabel(level, modeLabel) {
+  return `${level.id}. szint - ${level.title} - ${modeLabel}`;
 }
 
 function getBestScore(levelId, type) {
@@ -235,12 +407,15 @@ function showScreen(screenName) {
     startNewPracticeCard();
   } else if (screenName === "stats") {
     stopTimer();
+    stopSpeech();
     renderStats();
   } else if (screenName === "settings") {
     stopTimer();
+    stopSpeech();
     renderSettings();
   } else {
     stopTimer();
+    stopSpeech();
   }
 }
 
@@ -261,6 +436,8 @@ function escapeHtml(raw) {
 
 function renderLevels() {
   levelsList.innerHTML = "";
+  const sentenceTotal = levels.reduce((sum, level) => sum + level.sentences.length, 0);
+  totalSentencesCount.textContent = String(sentenceTotal);
 
   levels.forEach((level) => {
     const singleBest = getBestScore(level.id, PRACTICE_TYPES.single);
@@ -284,6 +461,7 @@ function renderLevels() {
               : ""
           }
         </div>
+        <span class="badge level-sentence-badge">${level.sentences.length} mondat</span>
       </div>
       <div class="row">
         <span class="muted">Legjobb eredmény</span>
@@ -371,7 +549,8 @@ function renderPracticeCard() {
   const modeLabel = PRACTICE_TYPE_LABELS[state.currentPracticeType] ?? "";
   const poolLength = state.roundSentences.length || annotateSentencePool(level).length;
   const roundTotal = getEffectiveRoundLength(level, poolLength);
-  practiceProgress.textContent = `${state.practiceIndex + 1} / ${roundTotal} mondat - ${level.title} - ${modeLabel}`;
+  practiceContext.textContent = getPracticeContextLabel(level, modeLabel);
+  practiceProgress.textContent = `${state.practiceIndex + 1} / ${roundTotal} mondat`;
   timeLeftEl.textContent = String(state.timeLeft);
 }
 
@@ -406,6 +585,10 @@ function revealTranslation() {
   rating.classList.remove("hidden");
   state.isShowingEnglish = true;
   renderPracticeCard();
+  const sentence = getCurrentSentence();
+  if (sentence?.en) {
+    speakEnglish(sentence.en, "reveal");
+  }
 }
 
 function autoRevealOnTimeout() {
@@ -430,6 +613,7 @@ function startRound() {
   state.roundAnswered = 0;
   state.roundKnown = 0;
   state.roundUnknowns = [];
+  state.roundKnowns = [];
 }
 
 function startNewPracticeCard() {
@@ -449,8 +633,11 @@ function startNewPracticeCard() {
   card.classList.remove("hidden");
   roundUnknownWrap.classList.add("hidden");
   roundUnknownList.innerHTML = "";
+  roundKnownWrap.classList.add("hidden");
+  roundKnownList.innerHTML = "";
   renderPracticeCard();
   startTimer();
+  state.lastSpokenSignature = "";
 }
 
 function moveToNextSentence(knewIt) {
@@ -461,17 +648,20 @@ function moveToNextSentence(knewIt) {
   state.attempts += 1;
   state.roundAnswered += 1;
   if (knewIt) state.roundKnown += 1;
-  if (!knewIt) {
-    const sentence = getCurrentSentence();
-    if (sentence) {
-      const sourceLevelId = sentence.__sourceLevelId ?? level.id;
-      const sourceLevel = getLevelById(sourceLevelId) ?? level;
-      state.roundUnknowns.push({
-        hu: sentence.hu,
-        en: sentence.en,
-        sourceLevelId: sourceLevel.id,
-        sourceLevelTitle: sentence.__sourceLevelTitle ?? sourceLevel.title,
-      });
+  const sentence = getCurrentSentence();
+  if (sentence) {
+    const sourceLevelId = sentence.__sourceLevelId ?? level.id;
+    const sourceLevel = getLevelById(sourceLevelId) ?? level;
+    const roundSentenceEntry = {
+      hu: sentence.hu,
+      en: sentence.en,
+      sourceLevelId: sourceLevel.id,
+      sourceLevelTitle: sentence.__sourceLevelTitle ?? sourceLevel.title,
+    };
+    if (knewIt) {
+      state.roundKnowns.push(roundSentenceEntry);
+    } else {
+      state.roundUnknowns.push(roundSentenceEntry);
     }
   }
   saveState();
@@ -512,9 +702,10 @@ function showAnswerToast(correctAnswer) {
   }
   answerToastText.textContent = correctAnswer;
   answerToast.classList.add("visible");
+  speakEnglish(correctAnswer, "toast-answer");
   answerToastTimeoutId = window.setTimeout(() => {
     hideAnswerToast();
-  }, 1000);
+  }, Math.round(state.settings.toastDurationSeconds * 1000));
 }
 
 function handleRating(knewIt) {
@@ -533,6 +724,7 @@ function handleRating(knewIt) {
 
 function showRoundResult(roundLength) {
   stopTimer();
+  stopSpeech();
   revealBtn.classList.add("hidden");
   rating.classList.add("hidden");
   practiceTimer.classList.add("hidden");
@@ -541,34 +733,42 @@ function showRoundResult(roundLength) {
   roundResult.classList.remove("hidden");
   const percent = Math.round((state.roundKnown / roundLength) * 100);
   const modeLabel = PRACTICE_TYPE_LABELS[state.currentPracticeType] ?? "";
-  roundResultText.textContent = `Eredmény (${modeLabel}): ${state.roundKnown} / ${roundLength} (${percent}%).`;
+  const level = getSelectedLevel();
+  const contextLabel = getPracticeContextLabel(level, modeLabel);
+  practiceContext.textContent = contextLabel;
+  roundResultText.textContent = `Eredmény: ${percent}% (${state.roundKnown}/${roundLength})`;
 
-  roundUnknownList.innerHTML = "";
-  if (state.roundUnknowns.length) {
-    roundUnknownWrap.classList.remove("hidden");
-    state.roundUnknowns.forEach((item) => {
-      const li = document.createElement("li");
+  renderRoundSentenceList(state.roundUnknowns, roundUnknownWrap, roundUnknownList);
+  renderRoundSentenceList(state.roundKnowns, roundKnownWrap, roundKnownList);
+}
 
-      const huLine = document.createElement("div");
-      huLine.className = "unknown-hu";
-      huLine.textContent = item.hu;
-
-      const enLine = document.createElement("div");
-      enLine.className = "unknown-en";
-      enLine.textContent = item.en;
-
-      const metaLine = document.createElement("div");
-      metaLine.className = "unknown-meta";
-      metaLine.textContent = `(${item.sourceLevelId}. szint - ${item.sourceLevelTitle})`;
-
-      li.appendChild(huLine);
-      li.appendChild(enLine);
-      li.appendChild(metaLine);
-      roundUnknownList.appendChild(li);
-    });
-  } else {
-    roundUnknownWrap.classList.add("hidden");
+function renderRoundSentenceList(items, wrapEl, listEl) {
+  listEl.innerHTML = "";
+  if (!items.length) {
+    wrapEl.classList.add("hidden");
+    return;
   }
+  wrapEl.classList.remove("hidden");
+  items.forEach((item) => {
+    const li = document.createElement("li");
+
+    const huLine = document.createElement("div");
+    huLine.className = "unknown-hu";
+    huLine.textContent = item.hu;
+
+    const enLine = document.createElement("div");
+    enLine.className = "unknown-en";
+    enLine.textContent = item.en;
+
+    const metaLine = document.createElement("div");
+    metaLine.className = "unknown-meta";
+    metaLine.textContent = `(${item.sourceLevelId}. szint - ${item.sourceLevelTitle})`;
+
+    li.appendChild(huLine);
+    li.appendChild(enLine);
+    li.appendChild(metaLine);
+    listEl.appendChild(li);
+  });
 }
 
 function startNextRound() {
@@ -578,11 +778,14 @@ function startNextRound() {
 
 function resetPracticeState() {
   stopTimer();
+  stopSpeech();
+  state.lastSpokenSignature = "";
   state.practiceIndex = 0;
   state.roundAnswered = 0;
   state.roundKnown = 0;
   state.roundSentences = [];
   state.roundUnknowns = [];
+  state.roundKnowns = [];
 }
 
 function hasIncompleteRound() {
@@ -691,7 +894,11 @@ function renderSettings() {
   sentencesPerRoundValue.textContent = String(state.settings.sentencesPerRound);
   autoRevealSecondsInput.value = String(state.settings.autoRevealSeconds);
   autoRevealSecondsValue.textContent = String(state.settings.autoRevealSeconds);
+  toastDurationSecondsInput.value = state.settings.toastDurationSeconds.toFixed(1);
+  toastDurationSecondsValue.textContent = state.settings.toastDurationSeconds.toFixed(1);
   darkModeToggle.checked = Boolean(state.settings.darkMode);
+  ttsEnabledToggle.checked = Boolean(state.settings.ttsEnabled);
+  renderVoiceSelectOptions();
 }
 
 function applyTheme() {
@@ -755,6 +962,9 @@ function loadState() {
         ...DEFAULT_SETTINGS,
         ...(parsed.settings ?? {}),
       };
+      state.settings.toastDurationSeconds = clampToastDuration(
+        state.settings.toastDurationSeconds
+      );
       state.timeLeft = state.settings.autoRevealSeconds;
     }
   } catch (error) {
@@ -778,11 +988,8 @@ revealBtn.addEventListener("click", () => {
 
 card.addEventListener("click", () => {
   if (!state.isTranslatedVisible) {
-    stopTimer();
-    state.isTranslatedVisible = true;
-    setRatingLabels(true);
-    revealBtn.classList.add("hidden");
-    rating.classList.remove("hidden");
+    revealTranslation();
+    return;
   }
   state.isShowingEnglish = !state.isShowingEnglish;
   renderPracticeCard();
@@ -837,6 +1044,30 @@ autoRevealSecondsInput.addEventListener("input", (event) => {
   saveState();
 });
 
+toastDurationSecondsInput.addEventListener("input", (event) => {
+  const target = event.target;
+  const clamped = clampToastDuration(target.value);
+  state.settings.toastDurationSeconds = clamped;
+  target.value = clamped.toFixed(1);
+  toastDurationSecondsValue.textContent = clamped.toFixed(1);
+  saveState();
+});
+
+englishVoiceSelect?.addEventListener("change", (event) => {
+  const target = event.target;
+  state.settings.englishVoiceURI = target.value;
+  saveState();
+});
+
+ttsEnabledToggle?.addEventListener("change", (event) => {
+  state.settings.ttsEnabled = Boolean(event.target.checked);
+  if (!state.settings.ttsEnabled) {
+    stopSpeech();
+  }
+  renderSettings();
+  saveState();
+});
+
 darkModeToggle.addEventListener("change", (event) => {
   state.settings.darkMode = event.target.checked;
   applyTheme();
@@ -853,6 +1084,7 @@ resetProgressBtn.addEventListener("click", () => {
 });
 
 loadState();
+initializeSpeechVoices();
 applyTheme();
 renderLevels();
 renderStats();
