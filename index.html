@@ -606,9 +606,9 @@
       <div class="settings-card">
         <div class="setting-row">
           <label for="sentences-per-round">Mondatok száma körönként</label>
-          <strong id="sentences-per-round-value">5</strong>
+          <strong id="sentences-per-round-value">15</strong>
         </div>
-        <input id="sentences-per-round" type="range" min="1" max="30" value="5" />
+        <input id="sentences-per-round" type="range" min="1" max="30" value="15" />
       </div>
       <div class="settings-card">
         <div class="setting-row">
@@ -630,10 +630,22 @@
       </div>
       <div class="settings-card">
         <div class="setting-row">
-          <label for="auto-reveal-seconds">Időkorlát mondatoknál (mp)</label>
-          <strong id="auto-reveal-seconds-value">10</strong>
+          <label for="hungarian-tts-enabled-toggle">Magyar felolvasás (új kártyánál)</label>
+          <input id="hungarian-tts-enabled-toggle" type="checkbox" />
         </div>
-        <input id="auto-reveal-seconds" type="range" min="3" max="30" value="10" />
+      </div>
+      <div class="settings-card">
+        <div class="setting-row">
+          <label for="hungarian-voice-select">Magyar felolvasó hang</label>
+        </div>
+        <select id="hungarian-voice-select"></select>
+      </div>
+      <div class="settings-card">
+        <div class="setting-row">
+          <label for="auto-reveal-seconds">Időkorlát mondatoknál (mp)</label>
+          <strong id="auto-reveal-seconds-value">15</strong>
+        </div>
+        <input id="auto-reveal-seconds" type="range" min="3" max="30" value="15" />
       </div>
       <div class="settings-card">
         <div class="setting-row">
