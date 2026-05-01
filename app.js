@@ -2,12 +2,14 @@ import { levels } from "./data.js";
 
 const STORAGE_KEY = "linguist-state-v1";
 const DEFAULT_SETTINGS = {
-  sentencesPerRound: 5,
-  autoRevealSeconds: 10,
+  sentencesPerRound: 15,
+  autoRevealSeconds: 15,
   toastDurationSeconds: 1,
   darkMode: false,
   ttsEnabled: true,
   englishVoiceURI: "",
+  hungarianTtsEnabled: false,
+  hungarianVoiceURI: "",
 };
 const MAX_SENTENCES_PER_ROUND = 30;
 const PRACTICE_TYPES = {
@@ -71,6 +73,8 @@ const state = {
   levelMetrics: createDefaultLevelMetrics(),
   settings: { ...DEFAULT_SETTINGS },
   lastSpokenSignature: "",
+  isAdvancing: false,
+  hasSpokenAnswerForCurrentCard: false,
 };
 
 const levelsScreen = document.getElementById("levels-screen");
@@ -119,9 +123,12 @@ const toastDurationSecondsValue = document.getElementById("toast-duration-second
 const darkModeToggle = document.getElementById("dark-mode-toggle");
 const ttsEnabledToggle = document.getElementById("tts-enabled-toggle");
 const englishVoiceSelect = document.getElementById("english-voice-select");
+const hungarianTtsEnabledToggle = document.getElementById("hungarian-tts-enabled-toggle");
+const hungarianVoiceSelect = document.getElementById("hungarian-voice-select");
 const resetProgressBtn = document.getElementById("reset-progress");
 let answerToastTimeoutId = null;
 let availableEnglishVoices = [];
+let availableHungarianVoices = [];
 
 function clampToastDuration(value) {
   const numeric = Number(value);
@@ -133,8 +140,10 @@ function canUseSpeechSynthesis() {
   return "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
 }
 
-function getEnglishVoices(allVoices) {
-  return allVoices.filter((voice) => voice?.lang?.toLowerCase().startsWith("en"));
+function getVoicesByLanguage(allVoices, langPrefix) {
+  return allVoices.filter((voice) =>
+    voice?.lang?.toLowerCase().startsWith(langPrefix.toLowerCase())
+  );
 }
 
 function getSentenceSpeakKey() {
@@ -169,18 +178,39 @@ function compareVoices(a, b) {
   return scoreVoice(b) - scoreVoice(a);
 }
 
-function getPreferredVoice() {
-  if (!availableEnglishVoices.length) return null;
-  return [...availableEnglishVoices].sort(compareVoices)[0] ?? null;
+function scoreHungarianVoice(voice) {
+  const lang = (voice.lang ?? "").toLowerCase();
+  let score = 0;
+  if (lang === "hu-hu") score += 60;
+  if (lang.startsWith("hu-hu")) score += 35;
+  if (lang.startsWith("hu")) score += 10;
+  if (voice.localService) score += 5;
+  return score;
 }
 
-function getSelectedVoice() {
-  const selectedUri = state.settings.englishVoiceURI;
+function compareHungarianVoices(a, b) {
+  return scoreHungarianVoice(b) - scoreHungarianVoice(a);
+}
+
+function pickVoice(voices, selectedUri, compareFn) {
+  if (!voices.length) return null;
   if (selectedUri) {
-    const exact = availableEnglishVoices.find((voice) => voice.voiceURI === selectedUri);
+    const exact = voices.find((voice) => voice.voiceURI === selectedUri);
     if (exact) return exact;
   }
-  return getPreferredVoice();
+  return [...voices].sort(compareFn)[0] ?? null;
+}
+
+function getSelectedEnglishVoice() {
+  return pickVoice(availableEnglishVoices, state.settings.englishVoiceURI, compareVoices);
+}
+
+function getSelectedHungarianVoice() {
+  return pickVoice(
+    availableHungarianVoices,
+    state.settings.hungarianVoiceURI,
+    compareHungarianVoices
+  );
 }
 
 function getVoiceLabel(voice) {
@@ -193,18 +223,35 @@ function stopSpeech() {
   window.speechSynthesis.cancel();
 }
 
-function speakEnglish(text, reason = "general") {
+function speakAndWait(utterance, timeoutMs = 7000) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      resolve();
+    };
+    const timeoutId = window.setTimeout(finish, timeoutMs);
+    utterance.onend = finish;
+    utterance.onerror = finish;
+    stopSpeech();
+    window.speechSynthesis.speak(utterance);
+  });
+}
+
+async function speakEnglish(text, reason = "general", options = {}) {
   const phrase = String(text ?? "").trim();
   if (!phrase || !canUseSpeechSynthesis()) return;
   if (!state.settings.ttsEnabled) return;
   if (state.currentScreen !== "practice") return;
 
   const signature = `${reason}:${getSentenceSpeakKey()}:${phrase}`;
-  if (state.lastSpokenSignature === signature) return;
+  if (!options.force && state.lastSpokenSignature === signature) return;
   state.lastSpokenSignature = signature;
 
   const utterance = new SpeechSynthesisUtterance(phrase);
-  const voice = getSelectedVoice();
+  const voice = getSelectedEnglishVoice();
   if (voice) {
     utterance.voice = voice;
     utterance.lang = voice.lang || "en-GB";
@@ -214,45 +261,75 @@ function speakEnglish(text, reason = "general") {
   utterance.rate = 1;
   utterance.pitch = 1;
 
+  if (options.waitForEnd) {
+    await speakAndWait(utterance);
+    return;
+  }
+
   stopSpeech();
   window.speechSynthesis.speak(utterance);
 }
 
-function renderVoiceSelectOptions() {
-  if (!englishVoiceSelect) return;
+function speakHungarian(text, reason = "general") {
+  const phrase = String(text ?? "").trim();
+  if (!phrase || !canUseSpeechSynthesis()) return;
+  if (!state.settings.hungarianTtsEnabled) return;
+  if (state.currentScreen !== "practice") return;
 
-  englishVoiceSelect.innerHTML = "";
+  const signature = `${reason}:${getSentenceSpeakKey()}:${phrase}`;
+  if (state.lastSpokenSignature === signature) return;
+  state.lastSpokenSignature = signature;
+
+  const utterance = new SpeechSynthesisUtterance(phrase);
+  const voice = getSelectedHungarianVoice();
+  if (voice) {
+    utterance.voice = voice;
+    utterance.lang = voice.lang || "hu-HU";
+  } else {
+    utterance.lang = "hu-HU";
+  }
+  utterance.rate = 1;
+  utterance.pitch = 1;
+
+  stopSpeech();
+  window.speechSynthesis.speak(utterance);
+}
+
+function renderVoiceSelectOptions(selectEl, options) {
+  if (!selectEl) return;
+
+  selectEl.innerHTML = "";
   if (!canUseSpeechSynthesis()) {
     const option = document.createElement("option");
     option.value = "";
     option.textContent = "A böngésző nem támogatja a felolvasást";
-    englishVoiceSelect.appendChild(option);
-    englishVoiceSelect.disabled = true;
+    selectEl.appendChild(option);
+    selectEl.disabled = true;
     return;
   }
 
-  if (!availableEnglishVoices.length) {
+  if (!options.voices.length) {
     const option = document.createElement("option");
     option.value = "";
-    option.textContent = "Nincs elérhető angol hang";
-    englishVoiceSelect.appendChild(option);
-    englishVoiceSelect.disabled = true;
+    option.textContent = options.noVoicesText;
+    selectEl.appendChild(option);
+    selectEl.disabled = true;
     return;
   }
 
-  englishVoiceSelect.disabled = !state.settings.ttsEnabled;
-  availableEnglishVoices.forEach((voice) => {
+  selectEl.disabled = !options.enabled;
+  options.voices.forEach((voice) => {
     const option = document.createElement("option");
     option.value = voice.voiceURI;
     option.textContent = getVoiceLabel(voice);
-    englishVoiceSelect.appendChild(option);
+    selectEl.appendChild(option);
   });
 
-  const preferred = getSelectedVoice();
+  const preferred = options.getSelectedVoice();
   const nextUri = preferred?.voiceURI ?? "";
-  englishVoiceSelect.value = nextUri;
-  if (state.settings.englishVoiceURI !== nextUri) {
-    state.settings.englishVoiceURI = nextUri;
+  selectEl.value = nextUri;
+  if (options.getStoredUri() !== nextUri) {
+    options.setStoredUri(nextUri);
     saveState();
   }
 }
@@ -265,7 +342,8 @@ function refreshAvailableVoices() {
   }
 
   const all = window.speechSynthesis.getVoices();
-  availableEnglishVoices = getEnglishVoices(all).sort(compareVoices);
+  availableEnglishVoices = getVoicesByLanguage(all, "en").sort(compareVoices);
+  availableHungarianVoices = getVoicesByLanguage(all, "hu").sort(compareHungarianVoices);
   renderSettings();
 }
 
@@ -588,6 +666,7 @@ function revealTranslation() {
   const sentence = getCurrentSentence();
   if (sentence?.en) {
     speakEnglish(sentence.en, "reveal");
+    state.hasSpokenAnswerForCurrentCard = true;
   }
 }
 
@@ -622,11 +701,15 @@ function startNewPracticeCard() {
   }
   state.isTranslatedVisible = false;
   state.isShowingEnglish = false;
+  state.isAdvancing = false;
+  state.hasSpokenAnswerForCurrentCard = false;
   revealBtn.classList.remove("hidden");
   revealBtn.disabled = false;
   revealBtn.textContent = "Fordítás felfedése";
   setRatingLabels(false);
   rating.classList.remove("hidden");
+  knownBtn.disabled = false;
+  unknownBtn.disabled = false;
   roundResult.classList.add("hidden");
   practiceTimer.classList.remove("hidden");
   practiceProgress.classList.remove("hidden");
@@ -638,6 +721,10 @@ function startNewPracticeCard() {
   renderPracticeCard();
   startTimer();
   state.lastSpokenSignature = "";
+  const sentence = getCurrentSentence();
+  if (sentence?.hu) {
+    speakHungarian(sentence.hu, "card-start-hu");
+  }
 }
 
 function moveToNextSentence(knewIt) {
@@ -702,13 +789,13 @@ function showAnswerToast(correctAnswer) {
   }
   answerToastText.textContent = correctAnswer;
   answerToast.classList.add("visible");
-  speakEnglish(correctAnswer, "toast-answer");
   answerToastTimeoutId = window.setTimeout(() => {
     hideAnswerToast();
   }, Math.round(state.settings.toastDurationSeconds * 1000));
 }
 
-function handleRating(knewIt) {
+async function handleRating(knewIt) {
+  if (state.isAdvancing) return;
   const currentSentence = getCurrentSentence();
   if (!currentSentence) return;
 
@@ -719,7 +806,25 @@ function handleRating(knewIt) {
     state.isTranslatedVisible = true;
     showAnswerToast(currentSentence.en);
   }
-  moveToNextSentence(knewIt);
+
+  state.isAdvancing = true;
+  knownBtn.disabled = true;
+  unknownBtn.disabled = true;
+
+  try {
+    if (!state.hasSpokenAnswerForCurrentCard) {
+      await speakEnglish(currentSentence.en, "answer-before-next", {
+        force: true,
+        waitForEnd: true,
+      });
+      state.hasSpokenAnswerForCurrentCard = true;
+    }
+    moveToNextSentence(knewIt);
+  } finally {
+    state.isAdvancing = false;
+    knownBtn.disabled = false;
+    unknownBtn.disabled = false;
+  }
 }
 
 function showRoundResult(roundLength) {
@@ -898,7 +1003,27 @@ function renderSettings() {
   toastDurationSecondsValue.textContent = state.settings.toastDurationSeconds.toFixed(1);
   darkModeToggle.checked = Boolean(state.settings.darkMode);
   ttsEnabledToggle.checked = Boolean(state.settings.ttsEnabled);
-  renderVoiceSelectOptions();
+  hungarianTtsEnabledToggle.checked = Boolean(state.settings.hungarianTtsEnabled);
+  renderVoiceSelectOptions(englishVoiceSelect, {
+    voices: availableEnglishVoices,
+    enabled: state.settings.ttsEnabled,
+    getSelectedVoice: getSelectedEnglishVoice,
+    getStoredUri: () => state.settings.englishVoiceURI,
+    setStoredUri: (nextUri) => {
+      state.settings.englishVoiceURI = nextUri;
+    },
+    noVoicesText: "Nincs elérhető angol hang",
+  });
+  renderVoiceSelectOptions(hungarianVoiceSelect, {
+    voices: availableHungarianVoices,
+    enabled: state.settings.hungarianTtsEnabled,
+    getSelectedVoice: getSelectedHungarianVoice,
+    getStoredUri: () => state.settings.hungarianVoiceURI,
+    setStoredUri: (nextUri) => {
+      state.settings.hungarianVoiceURI = nextUri;
+    },
+    noVoicesText: "Nincs elérhető magyar hang",
+  });
 }
 
 function applyTheme() {
@@ -1059,9 +1184,24 @@ englishVoiceSelect?.addEventListener("change", (event) => {
   saveState();
 });
 
+hungarianVoiceSelect?.addEventListener("change", (event) => {
+  const target = event.target;
+  state.settings.hungarianVoiceURI = target.value;
+  saveState();
+});
+
 ttsEnabledToggle?.addEventListener("change", (event) => {
   state.settings.ttsEnabled = Boolean(event.target.checked);
   if (!state.settings.ttsEnabled) {
+    stopSpeech();
+  }
+  renderSettings();
+  saveState();
+});
+
+hungarianTtsEnabledToggle?.addEventListener("change", (event) => {
+  state.settings.hungarianTtsEnabled = Boolean(event.target.checked);
+  if (!state.settings.hungarianTtsEnabled) {
     stopSpeech();
   }
   renderSettings();
